@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>日程日历</title>
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js'></script>
+    
+    <style>
+        body {
+            margin: 40px 10px;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #calendar {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+        }
+
+        .priority-1 { /* 低优先级 */
+            background-color: #4CAF50 !important;
+            border-color: #4CAF50 !important;
+        }
+
+        .priority-2 { /* 中优先级 */
+            background-color: #FFC107 !important;
+            border-color: #FFC107 !important;
+        }
+
+        .priority-3 { /* 高优先级 */
+            background-color: #F44336 !important;
+            border-color: #F44336 !important;
+        }
+
+        .fc-event {
+            cursor: pointer;
+            padding: 2px 5px;
+            margin: 2px 0;
+            border-radius: 3px;
+        }
+
+        .event-tooltip {
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id='calendar'></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                locale: 'zh-cn',
+                buttonText: {
+                    today: '今天',
+                    month: '月',
+                    week: '周',
+                    day: '日'
+                },
+                events: '/api/calendar/events',
+                eventDidMount: function(info) {
+                    // 添加鼠标悬停效果
+                    info.el.addEventListener('mouseover', function() {
+                        showTooltip(info.event, this);
+                    });
+                    
+                    info.el.addEventListener('mouseout', function() {
+                        hideTooltip();
+                    });
+                },
+                eventClick: function(info) {
+                    showEventDetails(info.event);
+                }
+            });
+            
+            calendar.render();
+
+            // 显示事件详情
+            function showEventDetails(event) {
+                fetch(`/api/calendar/event/${event.id}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            const details = data.data;
+                            alert(`
+                                标题：${details.title}
+                                描述：${details.description || '无'}
+                                开始时间：${new Date(details.start_time).toLocaleString()}
+                                结束时间：${details.end_time ? new Date(details.end_time).toLocaleString() : '无'}
+                                优先级：${['低', '中', '高'][details.priority - 1]}
+                                状态：${details.status}
+                            `);
+                        }
+                    });
+            }
+
+            // 显示悬停提示
+            function showTooltip(event, element) {
+                const tooltip = document.createElement('div');
+                tooltip.className = 'event-tooltip';
+                tooltip.innerHTML = `
+                    <strong>${event.title}</strong><br>
+                    ${event.extendedProps.description || '无描述'}<br>
+                    开始：${event.start.toLocaleString()}<br>
+                    ${event.end ? '结束：' + event.end.toLocaleString() : ''}
+                `;
+                
+                document.body.appendChild(tooltip);
+                
+                const rect = element.getBoundingClientRect();
+                tooltip.style.top = rect.bottom + window.scrollY + 5 + 'px';
+                tooltip.style.left = rect.left + window.scrollX + 'px';
+            }
+
+            // 隐藏悬停提示
+            function hideTooltip() {
+                const tooltip = document.querySelector('.event-tooltip');
+                if (tooltip) {
+                    tooltip.remove();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
